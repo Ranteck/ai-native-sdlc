@@ -14,16 +14,24 @@ Son tres piezas, cada una con un trabajo distinto:
 | --- | --- | --- |
 | [`AI-NATIVE-SDLC.md`](AI-NATIVE-SDLC.md) | La regla: intent primero, cadena `intent → spec → plan` en `intent/`, frenar ante el desvío. | Se importa desde `CLAUDE.md` (`@AI-NATIVE-SDLC.md`), así está en contexto en toda sesión. Una skill solo se carga cuando el modelo decide que aplica. |
 | [`skills/ai-native-sdlc/`](skills/ai-native-sdlc/SKILL.md) | Las plantillas de `intent.md`, `spec.md` y `plan.md`. | Se cargan solo al escribir un artefacto, así no ocupan contexto todo el tiempo. |
-| [`load-intent.sh`](skills/ai-native-sdlc/scripts/load-intent.sh) | Hook `SessionStart` que inyecta `intent/intent.md` del proyecto al iniciar, retomar, `/clear` y compactar. | Tras compactar, Claude trabaja con un resumen y es cuando más se pierde la idea original. Sin `intent/`, no hace nada. |
+| [`load-intent.sh`](skills/ai-native-sdlc/scripts/load-intent.sh) | Hook `SessionStart` que inyecta `intent/intent.md` del proyecto al iniciar, retomar, `/clear` y compactar. | Tras compactar, Claude trabaja con un resumen y es cuando más se pierde la idea original. Sin intent raíz, no hace nada. |
 
-Convive con superpowers: brainstorming y writing-plans siguen funcionando, pero guardan su spec y
-su plan en `intent/` en vez de `docs/superpowers/`.
+El hook corre con `sh`. Solo inyecta el intent raíz si es un archivo regular de hasta 8000 bytes,
+entre delimitadores explícitos; si es más largo, pide leerlo completo antes de planificar o cambiar
+código. Los symlinks y otros tipos de archivo se omiten con un aviso. Después lista las rutas de
+los intents de features regulares para leer el relevante; si la lista no entra, avisa que revises
+`intent/`. La salida total siempre queda por debajo de 10.000 caracteres.
+
+Convive con superpowers: los formatos y puertas de aprobación de brainstorming y writing-plans
+mandan, y guardan su spec y su plan en `intent/` en vez de `docs/superpowers/`. La skill agrega la
+trazabilidad al intent y de REQ a tests. Intent, spec y plan requieren tu aprobación explícita
+(`Estado: aceptado`) antes de avanzar a la etapa siguiente.
 
 ## Instalar
 
-Requiere `jq`.
+Requiere `sh` y `jq`.
 
-```bash
+```sh
 git clone <url-del-repo> ~/Proyectos/ai-native-sdlc
 ~/Proyectos/ai-native-sdlc/install.sh
 ```
@@ -31,12 +39,19 @@ git clone <url-del-repo> ~/Proyectos/ai-native-sdlc
 [`install.sh`](install.sh) crea en el perfil dos symlinks al repo (`AI-NATIVE-SDLC.md` y
 `skills/ai-native-sdlc`), agrega `@AI-NATIVE-SDLC.md` a `CLAUDE.md` si falta y registra el hook
 `SessionStart` en `settings.json` sin tocar los demás hooks. Se puede correr las veces que haga
-falta. Si en el perfil ya hay un archivo o carpeta real con esos nombres, no cambia nada y avisa.
-Después, abrí una sesión nueva de Claude Code.
+falta. Antes de modificar el perfil, valida las fuentes, los destinos, la lectura de `CLAUDE.md`
+y que `settings.json`, si existe, contenga exactamente un objeto JSON. Si rechaza esas entradas,
+el perfil queda intacto. Las rutas relativas de `CLAUDE_CONFIG_DIR` se resuelven desde el directorio
+actual. El hook usa una ruta absoluta entre comillas simples con los escapes necesarios.
+
+Solo reemplaza hooks cuyo comando completo sea `sh` o `bash` seguido de una ruta entre comillas
+al script; conserva los comandos ajenos que solo mencionan su nombre. Actualiza `settings.json`
+con un reemplazo atómico que conserva sus permisos y, si es un symlink, conserva el enlace y
+reemplaza su destino. Después, abrí una sesión nueva de Claude Code.
 
 **Varios perfiles:** corrélo una vez por perfil.
 
-```bash
+```sh
 CLAUDE_CONFIG_DIR=~/.claude-personal ~/Proyectos/ai-native-sdlc/install.sh
 ```
 
@@ -47,12 +62,84 @@ próxima sesión. Si moviste el repo de lugar, volvé a correr `install.sh`.
 
 ## Desinstalar
 
-```bash
-DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-sed -i.bak '/^@AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
-rm "$DIR/AI-NATIVE-SDLC.md" "$DIR/skills/ai-native-sdlc"
-jq '.hooks.SessionStart |= map(.hooks |= map(select((.command // "") | contains("ai-native-sdlc/scripts/load-intent.sh") | not)) | select(.hooks != []))' \
-  "$DIR/settings.json" > "$DIR/settings.json.tmp" && cat "$DIR/settings.json.tmp" > "$DIR/settings.json" && rm "$DIR/settings.json.tmp"
+Si `CLAUDE.md` es un symlink, quitá `@AI-NATIVE-SDLC.md` en el archivo al que apunta:
+`sed -i` reemplazaría el enlace. El bloque de abajo te avisa y deja ese paso pendiente.
+Solo elimina los dos enlaces del paquete si son symlinks; conserva archivos y carpetas reales.
+Para el hook usa la misma regla de propiedad que el instalador y reemplaza el destino de
+`settings.json` de forma atómica, conservando permisos y symlinks.
+
+```sh
+(
+  set -eu
+  DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+  case "$DIR" in
+    /*) ;;
+    *) DIR="$PWD/$DIR" ;;
+  esac
+
+  if [ -L "$DIR/CLAUDE.md" ]; then
+    printf 'CLAUDE.md es un symlink: quitá el import en el archivo al que apunta; sed -i reemplazaría el enlace.\n' >&2
+  elif [ -f "$DIR/CLAUDE.md" ]; then
+    sed -i.bak '/^@AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
+  fi
+
+  for target in "$DIR/AI-NATIVE-SDLC.md" "$DIR/skills/ai-native-sdlc"; do
+    if [ -L "$target" ]; then
+      rm "$target"
+    fi
+  done
+
+  settings="$DIR/settings.json"
+  links=0
+  while [ -L "$settings" ]; do
+    links=$((links + 1))
+    if [ "$links" -gt 40 ]; then
+      printf 'No se pudo resolver settings.json: demasiados symlinks.\n' >&2
+      exit 1
+    fi
+    link=$(readlink "$settings")
+    case "$link" in
+      /*) settings="$link" ;;
+      *) settings="$(dirname "$settings")/$link" ;;
+    esac
+  done
+  if [ -e "$settings" ]; then
+    [ -f "$settings" ] && [ -r "$settings" ] || {
+      printf 'No se puede leer %s como archivo regular.\n' "$settings" >&2
+      exit 1
+    }
+    merged=$(jq -s '
+  def ours:
+    (.command? // "")
+    | if type == "string" then
+        test("\\A(sh|bash) (\u0027([^\u0027]|\u0027\\\\\u0027\u0027)*/skills/ai-native-sdlc/scripts/load-intent\\.sh\u0027|\"([^\"\\\\]|\\\\.)*/skills/ai-native-sdlc/scripts/load-intent\\.sh\")\\z")
+      else false end;
+  if length != 1 or (.[0] | type) != "object" then
+    error("settings.json debe contener exactamente un objeto JSON")
+  else .[0] end
+  | if (.hooks.SessionStart? | type) == "array" then
+      .hooks.SessionStart |= map(
+        if any(.hooks[]?; ours)
+        then (.hooks |= map(select(ours | not))) | select(.hooks != [])
+        else . end)
+    else . end' "$settings")
+    tmp=$(mktemp "$(dirname "$settings")/settings.json.XXXXXX")
+    trap 'rm -f "$tmp"' 0
+    trap 'exit 1' HUP INT TERM
+    cp -p "$settings" "$tmp"
+    restore_write=no
+    if [ ! -w "$tmp" ]; then
+      chmod u+w "$tmp"
+      restore_write=yes
+    fi
+    printf '%s\n' "$merged" > "$tmp"
+    if [ "$restore_write" = yes ]; then
+      chmod u-w "$tmp"
+    fi
+    mv -f "$tmp" "$settings"
+  fi
+)
 ```
 
-Deja un `CLAUDE.md.bak` al lado de tu `CLAUDE.md`. Los `intent/` de tus proyectos no se tocan.
+Si `CLAUDE.md` es un archivo regular, deja un `CLAUDE.md.bak` al lado. Los `intent/` de tus
+proyectos no se tocan.
