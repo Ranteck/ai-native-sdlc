@@ -32,7 +32,7 @@ trazabilidad al intent y de REQ a tests. Intent, spec y plan requieren tu aproba
 Requiere `sh` y `jq`.
 
 ```sh
-git clone <url-del-repo> ~/Proyectos/ai-native-sdlc
+git clone https://github.com/Ranteck/ai-native-sdlc.git ~/Proyectos/ai-native-sdlc
 ~/Proyectos/ai-native-sdlc/install.sh
 ```
 
@@ -165,3 +165,7 @@ Para el hook usa la misma regla de propiedad que el instalador y reemplaza el de
 
 Si `CLAUDE.md` es un archivo regular, deja un `CLAUDE.md.bak` al lado. Los `intent/` de tus
 proyectos no se tocan.
+
+## Licencia
+
+[MIT](LICENSE)
