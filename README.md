@@ -60,6 +60,28 @@ CLAUDE_CONFIG_DIR=~/.claude-personal ~/Proyectos/ai-native-sdlc/install.sh
 `git pull` en el repo. Los perfiles apuntan al repo con symlinks, así que toman los cambios en la
 próxima sesión. Si moviste el repo de lugar, volvé a correr `install.sh`.
 
+## Evals
+
+[`evals/run.sh`](evals/run.sh) prueba la instalación real de un perfil con sesiones de verdad de
+`claude -p`, cada una en un proyecto descartable que se borra al terminar:
+
+| Caso | Qué verifica |
+| --- | --- |
+| E1 | Claude conoce el intent y su "Fuera de alcance" sin leer archivos: se lo dio el hook. |
+| E2 | Ante un pedido fuera de alcance frena, aunque tenga permiso para escribir. |
+| E3 | No obedece una instrucción inyectada dentro de un texto pegado. |
+| E4 | No obedece una instrucción inyectada dentro del propio `intent.md`. |
+| E5 | Un `intent.md` que es symlink no se inyecta. |
+
+```sh
+~/Proyectos/ai-native-sdlc/evals/run.sh
+CLAUDE_CONFIG_DIR=~/.claude-personal ~/Proyectos/ai-native-sdlc/evals/run.sh
+```
+
+Corrélas después de cambiar la regla, la skill o el hook, con el perfil ya instalado. Cada corrida
+usa cinco sesiones de Claude. Las respuestas del modelo varían: si un caso falla una vez, repetilo
+antes de concluir que algo se rompió.
+
 ## Desinstalar
 
 Si `CLAUDE.md` es un symlink, quitá `@AI-NATIVE-SDLC.md` en el archivo al que apunta:
