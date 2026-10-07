@@ -17,7 +17,13 @@ if [ -L "$intent" ]; then
   printf 'ai-native-sdlc: se omitió %s porque es un symlink.\n' "$intent" >&2
   exit 0
 fi
-[ -e "$intent" ] || exit 0
+if [ ! -e "$intent" ]; then
+  # An inaccessible directory must not be mistaken for a missing intent file.
+  if [ -d "$intent_dir" ]; then
+    [ -r "$intent_dir" ] && [ -x "$intent_dir" ] || fail
+  fi
+  exit 0
+fi
 if [ ! -f "$intent" ]; then
   printf 'ai-native-sdlc: se omitió %s porque no es un archivo regular.\n' "$intent" >&2
   exit 0

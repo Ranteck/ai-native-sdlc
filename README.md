@@ -77,18 +77,6 @@ Para el hook usa la misma regla de propiedad que el instalador y reemplaza el de
     *) DIR="$PWD/$DIR" ;;
   esac
 
-  if [ -L "$DIR/CLAUDE.md" ]; then
-    printf 'CLAUDE.md es un symlink: quitá el import en el archivo al que apunta; sed -i reemplazaría el enlace.\n' >&2
-  elif [ -f "$DIR/CLAUDE.md" ]; then
-    sed -i.bak '/^@AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
-  fi
-
-  for target in "$DIR/AI-NATIVE-SDLC.md" "$DIR/skills/ai-native-sdlc"; do
-    if [ -L "$target" ]; then
-      rm "$target"
-    fi
-  done
-
   settings="$DIR/settings.json"
   links=0
   while [ -L "$settings" ]; do
@@ -138,6 +126,18 @@ Para el hook usa la misma regla de propiedad que el instalador y reemplaza el de
     fi
     mv -f "$tmp" "$settings"
   fi
+
+  if [ -L "$DIR/CLAUDE.md" ]; then
+    printf 'CLAUDE.md es un symlink: quitá el import en el archivo al que apunta; sed -i reemplazaría el enlace.\n' >&2
+  elif [ -f "$DIR/CLAUDE.md" ]; then
+    sed -i.bak '/^@AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
+  fi
+
+  for target in "$DIR/AI-NATIVE-SDLC.md" "$DIR/skills/ai-native-sdlc"; do
+    if [ -L "$target" ]; then
+      rm "$target"
+    fi
+  done
 )
 ```
 
