@@ -251,7 +251,15 @@ Para el hook usa la misma regla de propiedad que el instalador y reemplaza el de
   if [ -L "$DIR/CLAUDE.md" ]; then
     printf 'CLAUDE.md es un symlink: quitá el import en el archivo al que apunta; sed -i reemplazaría el enlace.\n' >&2
   elif [ -f "$DIR/CLAUDE.md" ]; then
-    sed -i.bak '/^@AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
+    # install.sh writes a blank line before the import; remove both.
+    sed -i.bak '
+      /^$/{
+        $!N
+        /^\n@AI-NATIVE-SDLC\.md$/d
+        P
+        D
+      }
+      /^@AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
   fi
 
   for target in "$DIR/AI-NATIVE-SDLC.md" "$DIR/skills/ai-native-sdlc"; do
