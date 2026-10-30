@@ -42,7 +42,8 @@ if [ -e "$dir/CLAUDE.md" ] || [ -L "$dir/CLAUDE.md" ]; then
   [ -f "$dir/CLAUDE.md" ] && [ -r "$dir/CLAUDE.md" ] ||
     fail "no se puede leer $dir/CLAUDE.md como archivo regular."
   # Without -q, grep finishes reading, so a late read error cannot look like a match.
-  if grep -x '@AI-NATIVE-SDLC.md' "$dir/CLAUDE.md" >/dev/null; then
+  # Any path form counts: a symlinked CLAUDE.md needs an absolute import such as @~/.claude/AI-NATIVE-SDLC.md.
+  if grep -xE '@(.*/)?AI-NATIVE-SDLC\.md' "$dir/CLAUDE.md" >/dev/null; then
     append_import=no
   else
     status=$?

@@ -124,7 +124,7 @@ vez de `docs/superpowers/`. La skill agrega la trazabilidad al intent y de REQ a
 ### Detalles del instalador
 
 [`install.sh`](install.sh) crea en el perfil dos symlinks al repo (`AI-NATIVE-SDLC.md` y
-`skills/ai-native-sdlc`), agrega `@AI-NATIVE-SDLC.md` a `CLAUDE.md` si falta y registra el hook
+`skills/ai-native-sdlc`), agrega `@AI-NATIVE-SDLC.md` a `CLAUDE.md` si no lo importa ya, con o sin ruta, y registra el hook
 `SessionStart` en `settings.json` sin tocar los demás hooks. Se puede correr las veces que haga
 falta.
 
@@ -252,14 +252,14 @@ Para el hook usa la misma regla de propiedad que el instalador y reemplaza el de
     printf 'CLAUDE.md es un symlink: quitá el import en el archivo al que apunta; sed -i reemplazaría el enlace.\n' >&2
   elif [ -f "$DIR/CLAUDE.md" ]; then
     # install.sh writes a blank line before the import; remove both.
-    sed -i.bak '
+    sed -E -i.bak '
       /^$/{
         $!N
-        /^\n@AI-NATIVE-SDLC\.md$/d
+        /^\n@(.*\/)?AI-NATIVE-SDLC\.md$/d
         P
         D
       }
-      /^@AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
+      /^@(.*\/)?AI-NATIVE-SDLC\.md$/d' "$DIR/CLAUDE.md"
   fi
 
   for target in "$DIR/AI-NATIVE-SDLC.md" "$DIR/skills/ai-native-sdlc"; do

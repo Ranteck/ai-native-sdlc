@@ -13,7 +13,7 @@ fail() {
 dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 command -v claude >/dev/null 2>&1 || fail 'necesitás el CLI claude.'
 # The evals test the installed profile, not the repo files, so an uninstalled profile is an error.
-grep -qx '@AI-NATIVE-SDLC.md' "$dir/CLAUDE.md" ||
+grep -qxE '@(.*/)?AI-NATIVE-SDLC\.md' "$dir/CLAUDE.md" ||
   fail "el perfil $dir no importa @AI-NATIVE-SDLC.md; corré install.sh primero."
 grep -q '/skills/ai-native-sdlc/scripts/load-intent.sh' "$dir/settings.json" ||
   fail "el perfil $dir no tiene el hook de ai-native-sdlc; corré install.sh primero."
