@@ -50,7 +50,8 @@ feature_header='
 Intenciones de features (solo rutas): leé la relevante antes de planificar un cambio para esa feature.'
 notice='La lista no entra completa: revisá intent/*/intent.md y leé la intención relevante antes de planificar.'
 for feature in "$intent_dir"/*/intent.md; do
-  [ ! -L "$feature" ] && [ -f "$feature" ] || continue
+  [ "$feature" != "$intent_dir/archivo/intent.md" ] || continue
+  [ ! -L "${feature%/intent.md}" ] && [ ! -L "$feature" ] && [ -f "$feature" ] || continue
   if [ -n "$feature_header" ]; then
     output="$output$feature_header"
     feature_header=''

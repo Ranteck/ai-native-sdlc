@@ -1,7 +1,7 @@
 #!/bin/sh
-# Behavioral evals for an installed ai-native-sdlc profile. Every case runs a real `claude -p`
-# session in a throwaway project, because only a live model shows whether the rule and the hook
-# actually change behavior. Each run costs five sessions.
+# Behavioral evals for an installed ai-native-sdlc profile. Model behavior needs real `claude -p`
+# sessions in throwaway projects; E6 tests the installed hook directly to avoid a needless session.
+# Each run costs eight sessions.
 # Usage: evals/run.sh   or   CLAUDE_CONFIG_DIR=/path/to/profile evals/run.sh
 set -eu
 
@@ -134,6 +134,72 @@ if ! printf '%s' "$out" | grep -q 'ai-native-sdlc-canario'; then
   report 'E5 no inyecta un intent que es symlink' ok
 else
   report 'E5 no inyecta un intent que es symlink' fail "$out"
+fi
+
+new_project e6
+printf '# Intención: contador de hábitos\nEstado: aceptado\n' > "$work/e6/intent/intent.md"
+mkdir -p "$work/e6/intent/a" "$work/e6/intent/archivo/b"
+printf 'Estado: borrador\n' > "$work/e6/intent/a/intent.md"
+printf 'Estado: aceptado\n' > "$work/e6/intent/archivo/b/intent.md"
+printf 'Estado: aceptado\n' > "$work/e6/intent/archivo/intent.md"
+ln -s archivo/b "$work/e6/intent/alias-b"
+ln -s archivo "$work/e6/intent/alias-archivo"
+if out=$(CLAUDE_PROJECT_DIR="$work/e6" sh "$dir/skills/ai-native-sdlc/scripts/load-intent.sh") &&
+  printf '%s\n' "$out" | grep -qx 'intent/a/intent.md' &&
+  ! printf '%s\n' "$out" | grep -Eq 'intent/(archivo|alias-b|alias-archivo)'; then
+  report 'E6 el hook lista borradores y omite archivo' ok
+else
+  report 'E6 el hook lista borradores y omite archivo' fail "$out"
+fi
+
+new_project e7
+mkdir -p "$work/e7/intent/a" "$work/e7/intent/archivo" "$work/e7-before"
+printf '# Intención: exportar hábitos\nEstado: aceptado\n' > "$work/e7/intent/a/intent.md"
+printf '# Spec: exportar hábitos\nEstado: aceptado\n' > "$work/e7/intent/a/spec.md"
+printf '# Plan: exportar hábitos\nEstado: aceptado\nImplementado: exportar los hábitos a CSV.\n' > "$work/e7/intent/a/plan.md"
+cp "$work/e7/intent/intent.md" "$work/e7-before/intent.md"
+cp -R "$work/e7/intent/a" "$work/e7-before/a"
+out=$(ask e7 'Te confirmo que a está terminada, archivala. Su plan ya refleja lo construido.' \
+  --permission-mode acceptEdits --allowedTools 'Bash(git mv *)' 'Bash(mv *)')
+if [ ! -e "$work/e7/intent/a" ] && [ "$(extra_files e7)" = 3 ] &&
+  cmp -s "$work/e7-before/intent.md" "$work/e7/intent/intent.md" &&
+  diff -r "$work/e7-before/a" "$work/e7/intent/archivo/a" >/dev/null 2>&1; then
+  report 'E7 archiva la feature entera con OK y conserva el intent raíz' ok
+else
+  report 'E7 archiva la feature entera con OK y conserva el intent raíz' fail "$out"
+fi
+
+new_project e8
+cp "$work/e8/intent/intent.md" "$work/e8-before-intent.md"
+out=$(ask e8 'Preparame el intent de una feature nueva llamada archivo para exportar hábitos.' \
+  --permission-mode acceptEdits --disallowedTools Bash)
+draft=''
+for feature in "$work/e8/intent"/*/intent.md; do
+  [ -f "$feature" ] || continue
+  draft="$feature"
+done
+if [ ! -e "$work/e8/intent/archivo/intent.md" ] && [ "$(extra_files e8)" = 1 ] &&
+  cmp -s "$work/e8-before-intent.md" "$work/e8/intent/intent.md" &&
+  [ -n "$draft" ] && grep -q 'Estado: borrador' "$draft"; then
+  report 'E8 reserva archivo y prepara otro intent en borrador' ok
+else
+  report 'E8 reserva archivo y prepara otro intent en borrador' fail "$out"
+fi
+
+new_project e9
+mkdir -p "$work/e9/intent/archivo/b"
+printf '# Intención: exportar hábitos\nEstado: aceptado\nExporta hábitos a CSV.\n' > "$work/e9/intent/archivo/b/intent.md"
+printf '# Spec: exportar hábitos\nEstado: aceptado\nFormato CSV.\n' > "$work/e9/intent/archivo/b/spec.md"
+printf '# Plan: exportar hábitos\nEstado: aceptado\nImplementado: exportador CSV.\n' > "$work/e9/intent/archivo/b/plan.md"
+cp -R "$work/e9/intent" "$work/e9-before"
+out=$(ask e9 'La feature b exporta hábitos a CSV. Agregale una columna de fecha al CSV.' \
+  --permission-mode acceptEdits --disallowedTools Bash)
+if [ "$(extra_files e9)" = 3 ] &&
+  diff -r "$work/e9-before" "$work/e9/intent" >/dev/null 2>&1 &&
+  printf '%s' "$out" | grep -Eqi 'reabr'; then
+  report 'E9 propone reabrir sin mover ni editar el intent archivado' ok
+else
+  report 'E9 propone reabrir sin mover ni editar el intent archivado' fail "$out"
 fi
 
 printf '%s passed, %s failed\n' "$passed" "$failed"

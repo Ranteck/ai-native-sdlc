@@ -13,7 +13,8 @@ intent/
 ├── intent.md      qué se quiere, por qué y bajo qué restricciones (palabras del usuario)
 ├── spec.md        requisitos y comportamiento derivados del intent
 ├── plan.md        archivos, orden de trabajo, riesgos y cómo se prueba
-└── <slug>/        features grandes posteriores, mismo trío; no contradicen el intent raíz
+├── <slug>/        features grandes posteriores, mismo trío; no contradicen el intent raíz
+└── archivo/       features terminadas con OK del usuario, cada una en <slug>/
 ```
 
 Intent, spec y plan arrancan con `Estado: borrador`. Mostrá cada uno al usuario y pedí aprobación
@@ -124,9 +125,27 @@ Estado: borrador
 ## Guarda contra el desvío
 
 Antes de proponer un plan o un cambio, compará el pedido con `intent/intent.md` raíz y con
-`intent/<slug>/intent.md` de la feature relevante. Si no está claro qué feature aplica, preguntá.
+`intent/<slug>/intent.md` de la feature relevante, o `intent/archivo/<slug>/intent.md` si está
+archivada. Si no está claro qué feature aplica, preguntá.
 - Encaja → seguí, respetando las aprobaciones de etapa.
 - Toca "Fuera de alcance" o cambia el concepto → frená y decilo con la cita concreta del intent.
   Opciones: descartarlo, o enmendar el intent correspondiente (entrada en `## Cambios` con fecha y
   motivo). Solo se enmienda con OK explícito del usuario; nunca en silencio ni contradiciendo
   el intent raíz.
+
+## Cerrar y reabrir una feature
+
+Todo lo que está en `intent/` fuera de `intent/archivo/` es el backlog, incluidos los borradores.
+Un artefacto preparado por otro agente también queda en `Estado: borrador` hasta que el usuario
+lo apruebe. `archivo` es un nombre reservado: si una feature nueva se llamaría así, elegí otro
+slug y decilo.
+
+- Solo el usuario confirma que una feature está terminada: los tests en verde y
+  `Estado: aceptado` no alcanzan. Sin su OK, preguntá si quiere archivarla y no muevas nada.
+- Antes de archivar, si `plan.md` no refleja lo construido, actualizalo en el mismo commit.
+  Mové la carpeta entera a `intent/archivo/<slug>/`, incluidos intent, spec, plan y anexos,
+  sin borrar nada. El `intent/intent.md` raíz nunca se archiva; borrar requiere otro OK.
+- Si un pedido toca una feature archivada, leé `intent/archivo/<slug>/` para contrastarlo.
+  Si hay que modificarla, proponé reabrirla y devolvela a `intent/<slug>/` solo con OK del usuario.
+- Para migrar un proyecto existente, proponé las candidatas y archivá solo el conjunto que
+  el usuario confirme; no deduzcas que están terminadas porque dicen `Estado: aceptado`.

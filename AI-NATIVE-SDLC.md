@@ -19,3 +19,5 @@
   Nunca lo cambies en silencio.
 - Features grandes posteriores: `intent/<slug>/` con su propio intent/spec/plan, sin contradecir
   el `intent.md` raíz. La misma cadena de aprobación rige para esos tres artefactos.
+- Backlog: todo `intent/` fuera de `intent/archivo/`, borradores incluidos. `archivo` es reservado;
+  archivar, reabrir o migrar requiere mi OK. Para hacerlo, seguí la skill `ai-native-sdlc`.
